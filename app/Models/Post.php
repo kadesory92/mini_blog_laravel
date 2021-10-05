@@ -12,6 +12,23 @@ class Post extends Model
 
     protected $guarded=[];
 
+    public static function boot()
+    {
+        parent::boot();
+
+        self::creating(function ($post) {
+            if (request()->category && !request()->routeIs('categories.*'))
+                $post->category()->associate(Category::find(request()->category));
+            $post->user()->associate(auth()->user()->id);
+        });
+
+        self::updating(function($post){
+            $post->category()->associate(Category::find(request()->category));
+        });
+
+    }
+
+
     public function user(){
 
         return $this->belongsTo(User::class);

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Models\Category;
 use Illuminate\Http\Request;
+use App\Http\Requests\PostRequest;
+use Illuminate\Support\Facades\Gate;
 
 class PostController extends Controller
 {
@@ -27,7 +30,9 @@ class PostController extends Controller
      */
     public function create()
     {
-        return view('post.create');
+        $categories = Category::all();
+
+        return view('post.create', compact('categories'));
         //
     }
 
@@ -37,8 +42,19 @@ class PostController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(PostRequest $request)
     {
+        // $imageName = $request->image->store('posts');
+
+        $imageName =$request->image->store(config('images.path'), 'public');
+
+        Post::create([
+            'title' => $request->title,
+            'content' => $request->content,
+            'image' => $imageName
+        ]);
+
+        return redirect()->route('dashboard')->with('success', 'Votre post a été créé');
         //
     }
 
@@ -50,6 +66,7 @@ class PostController extends Controller
      */
     public function show(Post $post)
     {
+        return  view('post.show', compact('post'));
         //
     }
 
@@ -61,6 +78,12 @@ class PostController extends Controller
      */
     public function edit(Post $post)
     {
+        if (! Gate::allows('update-post', $post)) {
+            abort(403);
+        }
+
+        $categories = Category::all();
+        return view('post.edit', compact('post', 'categories'));
         //
     }
 
@@ -71,8 +94,27 @@ class PostController extends Controller
      * @param  \App\Models\Post  $post
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Post $post)
+    public function update(PostRequest $request, Post $post)
     {
+        $arrayUpdate=[
+            'title' => $request->title,
+            'content' => $request->content
+        ];
+
+        if($request->image !== null){
+
+            $imageName =$request->image->store(config('images.path'), 'public');
+
+            $arrayUpdate=array_merge($arrayUpdate, [
+                'image' => $imageName,
+            ]);
+            
+        }
+
+        $post->update($arrayUpdate);
+
+        return redirect()->route('dashboard')->with('success', 'Votre post a été modiié');
+
         //
     }
 
@@ -84,6 +126,13 @@ class PostController extends Controller
      */
     public function destroy(Post $post)
     {
+        if (! Gate::allows('destroy-post', $post)) {
+            abort(403);
+        }
+
+        $post->delete();
+        return redirect()->route('dashboard')->with('success', 'Votre post a été supprimé');
+
         //
     }
 }
